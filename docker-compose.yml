@@ -1,59 +1,98 @@
 services:
-  kafka:
+  kafka-1:
     image: bitnamilegacy/kafka:latest
-    container_name: kafka-broker
-    ports:
-      - "9094:9094"
+    container_name: kafka-1
     environment:
       - KAFKA_ENABLE_KRAFT=yes
       - KAFKA_CFG_NODE_ID=1
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3
+      - KAFKA_CFG_NUM_PARTITIONS=3
       - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=1
 
-  producer:
-    image: python:3.11-slim
-    container_name: standalone-producer
-    working_dir: /backend
-    volumes:
-      - ./data:/backend/data
-      - ./producer.py:/backend/producer.py
-    command: >
-      sh -c "pip install kafka-python numpy &&
-      python -u /backend/producer.py"
+  kafka-2:
+    image: bitnamilegacy/kafka:latest
+    container_name: kafka-2
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    restart: on-failure
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=1
 
-  consumer:
-    image: python:3.11-slim
-    container_name: standalone-consumer
-    working_dir: /frontend
-    volumes:
-      - ./consumer.py:/frontend/consumer.py
+  kafka-3:
+    image: bitnamilegacy/kafka:latest
+    container_name: kafka-3
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    command: >
-      sh -c "pip install kafka-python numpy matplotlib pandas scikit-learn &&
-      python -u /frontend/consumer.py"
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=3
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=1
+
+
+  train-producer:
+    build: ./backend
+    container_name: train-producer
+    command: python -u producer/train_producer.py
+    volumes:
+      - ./backend/data:/app/data:ro
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    restart: unless-stopped
+
+  test-producer:
+    build: ./backend
+    container_name: test-producer
+    command: python -u producer/test_producer.py
+    volumes:
+      - ./backend/data:/app/data:ro
+    depends_on:
+      - kafka-1
+    restart: unless-stopped
+
+
+  ml-consumer:
+    build: ./backend
+    container_name: ml-consumer
+    command: python -u consumer/ml_predictor.py
+    volumes:
+      - ./backend/models:/app/models:ro 
+    depends_on:
+      - kafka-1
+    restart: unless-stopped
+
+  metrics-consumer:
+    build: ./backend
+    container_name: metrics-consumer
+    command: python -u consumer/metrics_aggregator.py
+    depends_on:
+      - kafka-1
+    restart: unless-stopped
+  
+  streamlit-app:
+    build: ./frontend
+    container_name: streamlit-container
+    depends_on:
+      - kafka-1
     ports:
       - "8501:8501"
-    restart: on-failure
-
-  eda_notebook:
-    image: python:3.11-slim
-    container_name: eda-container
-    working_dir: /workspace
-    volumes:
-      - ./data:/workspace/data
-      - ./models:/workspace/models
-    command: >
-      sh -c "pip install numpy pandas matplotlib scikit-learn jupyter catboost &&
-      jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --notebook-dir=/workspace"
-    ports:
-      - 8889:8888
+    restart: unless-stopped
