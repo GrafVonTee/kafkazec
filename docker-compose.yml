@@ -44,3 +44,16 @@ services:
     ports:
       - "8501:8501"
     restart: on-failure
+
+  eda_notebook:
+    image: python:3.11-slim
+    container_name: eda-container
+    working_dir: /workspace
+    volumes:
+      - ./data:/workspace/data
+      - ./models:/workspace/models
+    command: >
+      sh -c "pip install numpy pandas matplotlib scikit-learn jupyter catboost &&
+      jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --notebook-dir=/workspace"
+    ports:
+      - 8889:8888
