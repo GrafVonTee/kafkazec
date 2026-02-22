@@ -4,13 +4,18 @@ from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
 class BaseKafkaProducer:
+    # грузим всех брокеров, иначе продюсер умрёт вместе с брокером
     def __init__(self, bootstrap_servers='kafka-1:9092,kafka-2:9092,kafka-3:9092'):
         retries = 20
         while retries > 0:
             try:
                 self.producer = KafkaProducer(
                     bootstrap_servers=bootstrap_servers.split(','),
-                    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+                    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                    acks='all',
+                    retries=10, 
+                    request_timeout_ms=30000,
+                    api_version=(3, 0, 0),
                 )
                 break
             except NoBrokersAvailable:

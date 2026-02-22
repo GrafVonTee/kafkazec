@@ -3,11 +3,13 @@ import random
 import asyncio
 from producer.base_producer import BaseKafkaProducer
 
+# Отправляем настоящее расстояние, которое нормально будет оценивать метрику
 async def send_delayed_duration(producer, trip_id, duration):
     await asyncio.sleep(random.uniform(3, 7))
     producer.send('finished_trips', {"id": trip_id, "actual_sec": duration})
 
 
+# асинки крутые
 async def main():
     producer = BaseKafkaProducer()
     csv_file_path = 'data/train.csv'
@@ -16,7 +18,7 @@ async def main():
         reader = csv.DictReader(file)
         
         for row in reader:
-            await asyncio.sleep(random.uniform(2, 5))
+            await asyncio.sleep(random.uniform(3, 5))
             
             trip_id = row["id"]
             duration = float(row["trip_duration"])

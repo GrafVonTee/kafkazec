@@ -4,17 +4,20 @@ import asyncio
 import math
 from producer.base_producer import BaseKafkaProducer
 
+# считаем эвристику расстояния (число взято наобум, чтобы не так сильно портило метрику)
 def calculate_heuristic_duration(lat1, lon1, lat2, lon2):
     distance = math.sqrt((lat2 - lat1)**2 + (lon2 - lon1)**2)
-    evristik_value = 20000
+    evristik_value = 20000 # подобрано эмпирическим путём
     return round(distance * evristik_value, 2)
 
 
+# отправляем с задержкой обновление по поездке, эвристическое расстояние
 async def send_delayed_duration(producer, trip_id, duration):
     await asyncio.sleep(random.uniform(3, 7))
     producer.send('finished_trips', {"id": trip_id, "actual_sec": duration})
 
 
+# да, всё через асинки, потому что асинки крутые
 async def main():
     producer = BaseKafkaProducer()
     csv_file_path = 'data/test.csv'
@@ -23,7 +26,7 @@ async def main():
         reader = csv.DictReader(file)
         
         for row in reader:
-            await asyncio.sleep(random.uniform(1, 5))
+            await asyncio.sleep(random.uniform(3, 5))
             
             trip_id = row["id"]
             lat1, lon1 = float(row["pickup_latitude"]), float(row["pickup_longitude"])

@@ -1,6 +1,6 @@
 services:
   kafka-1:
-    image: bitnamilegacy/kafka:latest
+    image: bitnamilegacy/kafka:latest # т.к. bitnami уже в привате, используем легаси
     container_name: kafka-1
     environment:
       - KAFKA_ENABLE_KRAFT=yes
@@ -11,10 +11,16 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
-      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3
-      - KAFKA_CFG_NUM_PARTITIONS=3
+
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3 # распространяем данные на 3-х брокерв
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3 # распространяем топики на всех брокеров
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3 # ам... не знаю...
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2 # тут пишем минимальное число брокеров для работоспособности
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2 # тут тоже
+      
+      - KAFKA_CFG_NUM_PARTITIONS=3 # сколько консьюмеров
       - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_KRAFT_CLUSTER_ID=1
+      - KAFKA_KRAFT_CLUSTER_ID=1 # важно, чтобы все брокеры между собой связались
 
   kafka-2:
     image: bitnamilegacy/kafka:latest
@@ -28,6 +34,12 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
+
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_KRAFT_CLUSTER_ID=1
 
@@ -43,6 +55,12 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
+      
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_KRAFT_CLUSTER_ID=1
 
@@ -67,6 +85,8 @@ services:
       - ./backend/data:/app/data:ro
     depends_on:
       - kafka-1
+      - kafka-2
+      - kafka-3
     restart: unless-stopped
 
 
@@ -78,6 +98,8 @@ services:
       - ./backend/models:/app/models:ro 
     depends_on:
       - kafka-1
+      - kafka-2
+      - kafka-3
     restart: unless-stopped
 
   metrics-consumer:
@@ -86,6 +108,8 @@ services:
     command: python -u consumer/metrics_aggregator.py
     depends_on:
       - kafka-1
+      - kafka-2
+      - kafka-3
     restart: unless-stopped
   
   streamlit-app:
@@ -93,6 +117,8 @@ services:
     container_name: streamlit-container
     depends_on:
       - kafka-1
+      - kafka-2
+      - kafka-3
     ports:
       - "8501:8501"
     restart: unless-stopped

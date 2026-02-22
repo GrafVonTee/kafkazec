@@ -4,6 +4,7 @@ from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
 class BaseKafkaConsumer:
+    # грузим всех брокеров, иначе консьюмер умрёт вместе с брокером
     def __init__(self, topics, group_id, bootstrap_servers='kafka-1:9092,kafka-2:9092,kafka-3:9092'):
         topics_list = [topics] if isinstance(topics, str) else topics
         
@@ -15,7 +16,11 @@ class BaseKafkaConsumer:
                     bootstrap_servers=bootstrap_servers.split(','),
                     group_id=group_id,
                     value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-                    auto_offset_reset='earliest'
+                    auto_offset_reset='earliest',
+                    api_version=(3, 0, 0),
+                    session_timeout_ms=30000,
+                    heartbeat_interval_ms=10000,
+                    request_timeout_ms=31000,
                 )
                 break
             except NoBrokersAvailable:

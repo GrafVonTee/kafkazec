@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+# Тут просто скопировали всё из блокнота точь-в-точь
+# не люблю joblib и pickle, но увы, выхода нет
 
 def haversine_distance(lng1, lat1, lng2, lat2):
     lat1, lng1, lat2, lng2 = map(np.radians, (lat1, lng1, lat2, lng2))
