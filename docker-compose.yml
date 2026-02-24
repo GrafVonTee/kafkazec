@@ -17,7 +17,7 @@ services:
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3 # ам... не знаю...
       - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2 # тут пишем минимальное число брокеров для работоспособности
       - KAFKA_CFG_MIN_INSYNC_REPLICAS=2 # тут тоже
-      
+
       - KAFKA_CFG_NUM_PARTITIONS=3 # сколько консьюмеров
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_KRAFT_CLUSTER_ID=1 # важно, чтобы все брокеры между собой связались
@@ -60,7 +60,7 @@ services:
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
       - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
       - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
-      
+
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_KRAFT_CLUSTER_ID=1
 
@@ -70,7 +70,7 @@ services:
     container_name: train-producer
     command: python -u producer/train_producer.py
     volumes:
-      - ./backend/data:/app/data:ro
+      - ./data:/app/data:ro
     depends_on:
       - kafka-1
       - kafka-2
@@ -82,7 +82,7 @@ services:
     container_name: test-producer
     command: python -u producer/test_producer.py
     volumes:
-      - ./backend/data:/app/data:ro
+      - ./data:/app/data:ro
     depends_on:
       - kafka-1
       - kafka-2
@@ -95,7 +95,7 @@ services:
     container_name: ml-consumer
     command: python -u consumer/ml_predictor.py
     volumes:
-      - ./backend/models:/app/models:ro 
+      - ./models:/app/models:ro
     depends_on:
       - kafka-1
       - kafka-2
@@ -111,7 +111,7 @@ services:
       - kafka-2
       - kafka-3
     restart: unless-stopped
-  
+
   streamlit-app:
     build: ./frontend
     container_name: streamlit-container

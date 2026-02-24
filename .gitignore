@@ -1,5 +1,2 @@
-__init__/
-__pycache__/
-backend/data/
-backend/models/
-backend/catboost_info
+*/__init__/*
+*/__pycache__/*

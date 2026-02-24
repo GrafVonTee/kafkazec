@@ -2,31 +2,30 @@
 
 ![Kafkazec map](image.png)
 
-## Подготовка к запуску
+## (Опционально) Подготовка к запуску
 
 Ссылка на данные (соревнование kaggle):
 - https://www.kaggle.com/competitions/nyc-taxi-trip-duration/overview
 
-Для работы требуется скачать `train.csv` и `test.csv` и закинуть их в папку `backend/data`.
-
-Также, чтобы получить обученную модель, требуется запустить сверху вниз все ячейки из файла `eda.ipynb`:
+Если хочется запустить блокнот `eda.ipynb`:
 1) Сначала нужно собрать образ докера:
 ```bash
 docker build -t taxi-eda-env -f Dockerfile.eda .
 ```
-2) Затем запустить контейнер
+1) Затем запустить контейнер
 ```bash
 docker run -it --rm \
   -p 8889:8888 \
-  -v $(pwd)/backend:/app \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/models:/app/models \
   --name taxi-eda-container \
   taxi-eda-env
 ```
-3) Подключиться к ноутбуку через:
+1) Подключиться к ноутбуку `eda.ipynb` через:
 - `http://localhost:8889` и далее выбор ядра python 3 kernel
-4) Нажать Run All, подождать завершения
-5) После завершения всех процессов проверить наличие файла `backend/models/taxi_pipeline.pkl`
-6) Нажать Ctrl+C, дождаться завершения докера, ввести
+1) Нажать Run All, подождать завершения
+2) После завершения всех процессов проверить наличие файла `models/taxi_pipeline.pkl`
+3) Нажать Ctrl+C, дождаться завершения докера, ввести
 ```bash
 docker container prune
 ```
@@ -97,7 +96,7 @@ graph TD
 
     P1 -- "1. Старт поездки" --> T1
     P2 -- "1. Старт поездки" --> T1
-    
+
     P1 -- "4. Факт спустя 2-5с" --> T3
     P2 -- "4. Эвристика спустя 2-5с" --> T3
 
