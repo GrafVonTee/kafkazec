@@ -1,116 +1,80 @@
+# Слишком много дублирования, надо бы убрать
+x-worker-base: &worker-base
+  build: ./backend
+  depends_on:
+    - kafka-1
+    - kafka-2
+    - kafka-3
+  restart: unless-stopped
+
+# Это тоже
+x-kafka-common: &kafka-common
+  KAFKA_ENABLE_KRAFT: "yes"
+  KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+  KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+
+  KAFKA_CFG_NUM_PARTITIONS: "3" # распределяем данные на всех брокеров равномерно
+  KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "2" # делаем дублирование в формате 2-х
+  KAFKA_CFG_INSYNC_REPLICAS: "1" # тут прописываем параметры синхронизации
+
+  ALLOW_PLAINTEXT_LISTENER: "yes"
+  KAFKA_KRAFT_CLUSTER_ID: 1 # Важно: строго 22 символа
+
+
 services:
   kafka-1:
     image: bitnamilegacy/kafka:latest # т.к. bitnami уже в привате, используем легаси
     container_name: kafka-1
     environment:
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
-
-      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=3 # распространяем данные на 3-х брокерв
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3 # распространяем топики на всех брокеров
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3 # ам... не знаю...
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2 # тут пишем минимальное число брокеров для работоспособности
-      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2 # тут тоже
-
-      - KAFKA_CFG_NUM_PARTITIONS=3 # сколько консьюмеров
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_KRAFT_CLUSTER_ID=1 # важно, чтобы все брокеры между собой связались
+      <<: *kafka-common
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:9092"
 
   kafka-2:
     image: bitnamilegacy/kafka:latest
     container_name: kafka-2
     environment:
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_NODE_ID=2
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
-
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
-
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_KRAFT_CLUSTER_ID=1
+      <<: *kafka-common
+      KAFKA_CFG_NODE_ID: 2
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092"
 
   kafka-3:
     image: bitnamilegacy/kafka:latest
     container_name: kafka-3
     environment:
-      - KAFKA_ENABLE_KRAFT=yes
-      - KAFKA_CFG_NODE_ID=3
-      - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
-
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-      - KAFKA_CFG_MIN_INSYNC_REPLICAS=2
-
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_KRAFT_CLUSTER_ID=1
+      <<: *kafka-common
+      KAFKA_CFG_NODE_ID: 3
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092"
 
 
   train-producer:
-    build: ./backend
+    <<: *worker-base
     container_name: train-producer
     command: python -u producer/train_producer.py
     volumes:
       - ./data:/app/data:ro
-    depends_on:
-      - kafka-1
-      - kafka-2
-      - kafka-3
-    restart: unless-stopped
 
   test-producer:
-    build: ./backend
+    <<: *worker-base
     container_name: test-producer
     command: python -u producer/test_producer.py
     volumes:
       - ./data:/app/data:ro
-    depends_on:
-      - kafka-1
-      - kafka-2
-      - kafka-3
-    restart: unless-stopped
-
 
   ml-consumer:
-    build: ./backend
+    <<: *worker-base
     container_name: ml-consumer
     command: python -u consumer/ml_predictor.py
     volumes:
       - ./models:/app/models:ro
-    depends_on:
-      - kafka-1
-      - kafka-2
-      - kafka-3
-    restart: unless-stopped
 
   metrics-consumer:
-    build: ./backend
+    <<: *worker-base
     container_name: metrics-consumer
     command: python -u consumer/metrics_aggregator.py
-    depends_on:
-      - kafka-1
-      - kafka-2
-      - kafka-3
-    restart: unless-stopped
 
   streamlit-app:
     build: ./frontend
